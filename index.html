@@ -19,6 +19,7 @@
             font-family: 'Press Start 2P', cursive;
             margin: 0;
             padding: 5px;
+            overflow-y: auto; /* Permitir scroll si es necesario */
         }
 
         #ad-banner {
@@ -27,7 +28,7 @@
             max-width: 728px;
             height: 90px;
             margin-bottom: 5px;
-            display: block; /* Cambiado a block para asegurar tamaño */
+            display: block;
             justify-content: center;
             align-items: center;
             font-size: 0.6rem;
@@ -155,6 +156,12 @@
             font-size: 0.6rem;
             cursor: pointer;
             border-radius: 5px;
+            outline: none;
+        }
+
+        #message-box .focused {
+            background-color: #FFCA28;
+            box-shadow: 0 0 5px #FFCA28;
         }
 
         #d-pad {
@@ -203,7 +210,6 @@
              data-ad-format="auto"
              data-full-width-responsive="true"></ins>
         <script>
-            // Asegurar que el contenedor tenga tamaño antes de inicializar
             window.addEventListener('load', () => {
                 const adContainer = document.getElementById('ad-banner');
                 if (adContainer && adContainer.offsetWidth === 0) {
@@ -232,8 +238,8 @@
 
     <div id="message-box">
         <p id="message-text"></p>
-        <button id="message-btn" class="message-btn">Ok</button>
-        <button id="restart-btn" class="message-btn" style="display: none;">Reiniciar</button>
+        <button id="message-btn" class="message-btn" style="display: none;">Ok</button>
+        <button id="restart-btn" class="message-btn">Nuevo Juego</button>
     </div>
 
     <div id="d-pad">
@@ -244,12 +250,10 @@
     </div>
 
     <script>
-        // Verificar si se está ejecutando en file://
         if (window.location.protocol === 'file:') {
             console.warn("Advertencia: El juego se está ejecutando en file://. Los anuncios de AdSense no funcionarán correctamente. Usa un servidor HTTP/HTTPS.");
         }
 
-        // Forzar ocultación del mensaje de carga después de 5 segundos
         setTimeout(() => {
             const loadingMessage = document.getElementById('loading-message');
             if (loadingMessage && loadingMessage.style.display !== 'none') {
@@ -263,7 +267,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             console.log("DOM fully loaded and parsed. Starting game initialization.");
 
-            // Elementos del DOM
             const canvas = document.getElementById('gameCanvas');
             const ctx = canvas ? canvas.getContext('2d') : null;
             const currentScoreDisplay = document.getElementById('current-score');
@@ -281,14 +284,12 @@
             const leftBtn = document.getElementById('left-btn');
             const rightBtn = document.getElementById('right-btn');
 
-            // Verificar elementos del DOM
             if (!canvas || !ctx || !currentScoreDisplay || !highScoreDisplay || !livesDisplay || !playPauseButton || !messageBox || !messageText || !messageBtn || !restartBtn || !loadingMessage || !gameContainer) {
                 console.error("Error: No se encontraron uno o más elementos del DOM. Verifica los IDs en el HTML.");
                 loadingMessage.textContent = "Error: No se pudo cargar el juego. Faltan elementos en el DOM.";
                 return;
             }
 
-            // Inicializar AdSense con retraso para asegurar renderizado
             try {
                 loadingMessage.style.display = 'none';
                 gameContainer.style.display = 'flex';
@@ -306,7 +307,6 @@
                 console.error("Error al inicializar AdSense:", e.message);
             }
 
-            // Variables del juego
             const gridSize = 15;
             let snake = [];
             let primaryFood = {};
@@ -333,8 +333,6 @@
             let currentPrimaryFoodItem = {};
             let currentSecondaryFoodItem = {};
             let isFlashing = false;
-            let isBoardFlashing = false;
-            let lastFlashScore = 0;
             let isInvincible = false;
             let invincibilityTimer = 0;
             let invincibilityInterval;
@@ -352,7 +350,6 @@
                 { type: 'power_up', emoji: '⚡', points: 0 }
             ];
 
-            // Funciones de sonido (sin Tone.js)
             const playEffect = (note, duration, time = "+0") => {
                 console.log(`Intentando reproducir efecto: ${note}, duración: ${duration}`);
             };
@@ -362,31 +359,27 @@
             };
 
             const showMessage = (text, isGameOver = false) => {
-                if (messageText && messageBox && restartBtn && messageBtn) {
+                if (messageText && messageBox && restartBtn) {
                     messageText.textContent = text;
                     messageBox.style.display = 'flex';
                     restartBtn.style.display = isGameOver ? 'block' : 'none';
-                    messageBtn.textContent = isGameOver ? 'Ok' : 'Continuar';
+                    restartBtn.focus(); // Enfocar "Nuevo Juego" al mostrar
+                    updateFocus(0);
                 } else {
                     console.error("Error: Elementos de mensaje no encontrados.");
                 }
             };
 
+            let focusedButtonIndex = 0;
+            const updateFocus = (index) => {
+                const buttons = [restartBtn].filter(btn => btn.style.display !== 'none');
+                buttons.forEach((btn, i) => btn.classList.toggle('focused', i === index));
+                focusedButtonIndex = index;
+            };
+
             const initEventListeners = () => {
                 console.log("Inicializando event listeners...");
                 try {
-                    if (messageBtn) {
-                        messageBtn.addEventListener('click', () => {
-                            if ("vibrate" in navigator) navigator.vibrate(50);
-                            messageBox.style.display = 'none';
-                            if (messageBtn.textContent === 'Ok') {
-                                // No hacer nada, solo cerrar
-                            } else {
-                                startGame();
-                            }
-                        });
-                    }
-
                     if (restartBtn) {
                         restartBtn.addEventListener('click', () => {
                             if ("vibrate" in navigator) navigator.vibrate(50);
@@ -399,18 +392,29 @@
                         const newDirection = e.key.toLowerCase();
                         if (newDirection === 'arrowup' && lastDirection !== 'down') {
                             direction = 'up';
+                            e.preventDefault(); // Evitar desplazamiento
                         } else if (newDirection === 'arrowdown' && lastDirection !== 'up') {
                             direction = 'down';
+                            e.preventDefault(); // Evitar desplazamiento
                         } else if (newDirection === 'arrowleft' && lastDirection !== 'right') {
                             direction = 'left';
+                            e.preventDefault(); // Evitar desplazamiento
                         } else if (newDirection === 'arrowright' && lastDirection !== 'left') {
                             direction = 'right';
+                            e.preventDefault(); // Evitar desplazamiento
                         } else if (newDirection === 'p' || newDirection === ' ') {
                             if ("vibrate" in navigator) navigator.vibrate(50);
                             if (isPaused) {
                                 startGame();
                             } else {
                                 pauseGame();
+                            }
+                        } else if (messageBox.style.display === 'flex') {
+                            const buttons = [restartBtn].filter(btn => btn.style.display !== 'none');
+                            if (newDirection === ' ' || newDirection === 'enter') {
+                                e.preventDefault();
+                                if ("vibrate" in navigator) navigator.vibrate(50);
+                                buttons[focusedButtonIndex].click();
                             }
                         }
                     });
@@ -485,7 +489,7 @@
                     direction = 'right';
                     lastDirection = 'right';
                     score = 0;
-                    lives = 3;
+                    lives = 3; // Reiniciar a 3 vidas
                     gameSpeed = initialGameSpeed;
                     primaryFood = {};
                     secondaryFood = null;
@@ -493,7 +497,6 @@
                     collisionBlock2 = null;
                     heart = null;
                     powerUp = null;
-                    lastFlashScore = 0;
                     isInvincible = false;
                     invincibilityTimer = 0;
                     if (invincibilityInterval) {
@@ -501,9 +504,12 @@
                     }
 
                     if (currentScoreDisplay) currentScoreDisplay.textContent = `Puntuación: ${score}`;
-                    if (livesDisplay) livesDisplay.textContent = 'Vidas: ' + '❤️'.repeat(lives);
+                    if (livesDisplay) livesDisplay.textContent = 'Vidas: ' + '❤️'.repeat(Math.min(lives, 3)); // Limitar a 3 vidas
                     isPaused = true;
                     if (playPauseButton) playPauseButton.innerHTML = '&#9654;';
+                    localStorage.removeItem('snakeHighScore'); // Borrar puntuación alta
+                    if (highScoreDisplay) highScoreDisplay.textContent = `Puntuación Alta: 0`;
+                    highScore = 0;
                     placeFood();
                     draw();
                 } catch (e) {
@@ -542,7 +548,7 @@
                 try {
                     primaryFood = findValidPosition();
                     secondaryFood = null;
-                    heart = null;
+                    heart = null; // Desactivar corazones para limitar vidas
                     powerUp = null;
 
                     const spiderProb = 0.15;
@@ -571,14 +577,6 @@
                         collisionBlock2 = findValidPosition();
                     } else {
                         collisionBlock2 = null;
-                    }
-
-                    if (lives < 6 && Math.random() < 0.2) {
-                        heart = findValidPosition();
-                    }
-
-                    if (Math.random() < 0.1) {
-                        powerUp = findValidPosition();
                     }
                 } catch (e) {
                     console.error("Error al colocar comida:", e.message);
@@ -624,11 +622,6 @@
             const draw = () => {
                 try {
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                    if (isBoardFlashing) {
-                        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                        ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    }
 
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
@@ -840,12 +833,6 @@
 
                         if (currentScoreDisplay) currentScoreDisplay.textContent = `Puntuación: ${score}`;
 
-                        if (score > 0 && score % 10 === 0 && score !== lastFlashScore) {
-                            isBoardFlashing = true;
-                            setTimeout(() => isBoardFlashing = false, 200);
-                            lastFlashScore = score;
-                        }
-
                         if (score > 0 && score % 3 === 0) {
                             if (gameSpeed > minSpeed) {
                                 gameSpeed -= 10;
@@ -856,8 +843,11 @@
 
                         placeFood();
                     } else if (heart && head.x === heart.x && head.y === heart.y) {
-                        lives++;
-                        if (livesDisplay) livesDisplay.textContent = 'Vidas: ' + '❤️'.repeat(lives);
+                        // No aumentar vidas por encima de 3
+                        if (lives < 3) {
+                            lives++;
+                            if (livesDisplay) livesDisplay.textContent = 'Vidas: ' + '❤️'.repeat(lives);
+                        }
                         heart = null;
                         if ("vibrate" in navigator) navigator.vibrate(200);
                         playEffect('G6', '16n');
@@ -894,7 +884,7 @@
                     if (lives > 0) {
                         lives--;
                         if (livesDisplay) livesDisplay.textContent = 'Vidas: ' + '❤️'.repeat(lives);
-                        showMessage(`¡Has chocado! Pierdes una vida. Te quedan ${lives} vidas.`, false);
+                        showMessage(`¡Has chocado! Pierdes una vida. Te quedan ${lives} vidas.`);
                         playEffect('D3', '16n');
 
                         const currentLength = snake.length;
@@ -920,14 +910,7 @@
             const gameOver = () => {
                 try {
                     playBassEffect('C1', '2n');
-                    let finalMessage = `¡Fin del juego! Puntuación: ${score}. ¡Intenta superar tu récord de ${highScore}!`;
-                    if (score > highScore) {
-                        highScore = score;
-                        localStorage.setItem('snakeHighScore', highScore);
-                        if (highScoreDisplay) highScoreDisplay.textContent = `Puntuación Alta: ${highScore}`;
-                        finalMessage = `¡Nuevo récord! Puntuación: ${score}.`;
-                    }
-                    showMessage(finalMessage, true);
+                    showMessage(`¡Fin del juego! Puntuación: ${score}.`);
                 } catch (e) {
                     console.error("Error al manejar fin del juego:", e.message);
                 }
@@ -975,7 +958,6 @@
                 }
             };
 
-            // Inicialización
             try {
                 console.log("Iniciando configuración inicial...");
                 initEventListeners();
