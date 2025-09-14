@@ -27,7 +27,7 @@
             max-width: 728px;
             height: 90px;
             margin-bottom: 5px;
-            display: flex;
+            display: block; /* Cambiado a block para asegurar tamaño */
             justify-content: center;
             align-items: center;
             font-size: 0.6rem;
@@ -203,7 +203,17 @@
              data-ad-format="auto"
              data-full-width-responsive="true"></ins>
         <script>
-            (adsbygoogle = window.adsbygoogle || []).push({});
+            // Asegurar que el contenedor tenga tamaño antes de inicializar
+            window.addEventListener('load', () => {
+                const adContainer = document.getElementById('ad-banner');
+                if (adContainer && adContainer.offsetWidth === 0) {
+                    adContainer.style.minWidth = '320px';
+                    adContainer.style.display = 'block';
+                }
+                if (window.adsbygoogle) {
+                    (adsbygoogle = window.adsbygoogle || []).push({});
+                }
+            });
         </script>
     </div>
     <h1>La culebrilla</h1>
