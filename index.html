@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta name="google-adsense-account" content="ca-pub-7204812331646445">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>La culebrilla</title>
@@ -20,7 +19,7 @@
             font-family: 'Press Start 2P', cursive;
             margin: 0;
             padding: 5px;
-            overflow-y: auto; /* Permitir scroll si es necesario */
+            overflow-y: auto;
         }
 
         #ad-banner {
@@ -150,19 +149,21 @@
         }
 
         .message-btn {
-            background-color: #FFC107;
-            color: #000;
+            background-color: #4CAF50; /* Todos los botones verdes */
+            color: #fff; /* Texto blanco para contraste */
             border: none;
             padding: 8px 15px;
             font-size: 0.6rem;
             cursor: pointer;
             border-radius: 5px;
             outline: none;
+            position: relative;
         }
 
-        #message-box .focused {
-            background-color: #FFCA28;
-            box-shadow: 0 0 5px #FFCA28;
+        .message-btn::after {
+            content: ' ↵'; /* Logo Enter en todos los botones */
+            position: absolute;
+            right: 5px;
         }
 
         #d-pad {
@@ -239,8 +240,8 @@
 
     <div id="message-box">
         <p id="message-text"></p>
-        <button id="message-btn" class="message-btn" style="display: none;">Ok</button>
-        <button id="restart-btn" class="message-btn">Nuevo Juego</button>
+        <button id="close-btn" class="message-btn">Cerrar</button>
+        <button id="restart-btn" class="message-btn">Reiniciar</button>
     </div>
 
     <div id="d-pad">
@@ -276,7 +277,7 @@
             const playPauseButton = document.getElementById('playPauseButton');
             const messageBox = document.getElementById('message-box');
             const messageText = document.getElementById('message-text');
-            const messageBtn = document.getElementById('message-btn');
+            const closeBtn = document.getElementById('close-btn');
             const restartBtn = document.getElementById('restart-btn');
             const loadingMessage = document.getElementById('loading-message');
             const gameContainer = document.getElementById('game-container');
@@ -285,7 +286,7 @@
             const leftBtn = document.getElementById('left-btn');
             const rightBtn = document.getElementById('right-btn');
 
-            if (!canvas || !ctx || !currentScoreDisplay || !highScoreDisplay || !livesDisplay || !playPauseButton || !messageBox || !messageText || !messageBtn || !restartBtn || !loadingMessage || !gameContainer) {
+            if (!canvas || !ctx || !currentScoreDisplay || !highScoreDisplay || !livesDisplay || !playPauseButton || !messageBox || !messageText || !closeBtn || !restartBtn || !loadingMessage || !gameContainer) {
                 console.error("Error: No se encontraron uno o más elementos del DOM. Verifica los IDs en el HTML.");
                 loadingMessage.textContent = "Error: No se pudo cargar el juego. Faltan elementos en el DOM.";
                 return;
@@ -360,27 +361,31 @@
             };
 
             const showMessage = (text, isGameOver = false) => {
-                if (messageText && messageBox && restartBtn) {
+                if (messageText && messageBox && closeBtn && restartBtn) {
                     messageText.textContent = text;
                     messageBox.style.display = 'flex';
+                    closeBtn.style.display = isGameOver ? 'none' : 'block';
                     restartBtn.style.display = isGameOver ? 'block' : 'none';
-                    restartBtn.focus(); // Enfocar "Nuevo Juego" al mostrar
-                    updateFocus(0);
+                    if (isGameOver) {
+                        restartBtn.focus();
+                    } else {
+                        closeBtn.focus();
+                    }
                 } else {
                     console.error("Error: Elementos de mensaje no encontrados.");
                 }
             };
 
-            let focusedButtonIndex = 0;
-            const updateFocus = (index) => {
-                const buttons = [restartBtn].filter(btn => btn.style.display !== 'none');
-                buttons.forEach((btn, i) => btn.classList.toggle('focused', i === index));
-                focusedButtonIndex = index;
-            };
-
             const initEventListeners = () => {
                 console.log("Inicializando event listeners...");
                 try {
+                    if (closeBtn) {
+                        closeBtn.addEventListener('click', () => {
+                            if ("vibrate" in navigator) navigator.vibrate(50);
+                            messageBox.style.display = 'none';
+                        });
+                    }
+
                     if (restartBtn) {
                         restartBtn.addEventListener('click', () => {
                             if ("vibrate" in navigator) navigator.vibrate(50);
@@ -393,16 +398,16 @@
                         const newDirection = e.key.toLowerCase();
                         if (newDirection === 'arrowup' && lastDirection !== 'down') {
                             direction = 'up';
-                            e.preventDefault(); // Evitar desplazamiento
+                            e.preventDefault();
                         } else if (newDirection === 'arrowdown' && lastDirection !== 'up') {
                             direction = 'down';
-                            e.preventDefault(); // Evitar desplazamiento
+                            e.preventDefault();
                         } else if (newDirection === 'arrowleft' && lastDirection !== 'right') {
                             direction = 'left';
-                            e.preventDefault(); // Evitar desplazamiento
+                            e.preventDefault();
                         } else if (newDirection === 'arrowright' && lastDirection !== 'left') {
                             direction = 'right';
-                            e.preventDefault(); // Evitar desplazamiento
+                            e.preventDefault();
                         } else if (newDirection === 'p' || newDirection === ' ') {
                             if ("vibrate" in navigator) navigator.vibrate(50);
                             if (isPaused) {
@@ -411,11 +416,14 @@
                                 pauseGame();
                             }
                         } else if (messageBox.style.display === 'flex') {
-                            const buttons = [restartBtn].filter(btn => btn.style.display !== 'none');
-                            if (newDirection === ' ' || newDirection === 'enter') {
+                            if (closeBtn.style.display !== 'none' && newDirection === 'enter') {
                                 e.preventDefault();
                                 if ("vibrate" in navigator) navigator.vibrate(50);
-                                buttons[focusedButtonIndex].click();
+                                closeBtn.click();
+                            } else if (restartBtn.style.display !== 'none' && newDirection === 'enter') {
+                                e.preventDefault();
+                                if ("vibrate" in navigator) navigator.vibrate(50);
+                                restartBtn.click();
                             }
                         }
                     });
@@ -490,8 +498,8 @@
                     direction = 'right';
                     lastDirection = 'right';
                     score = 0;
-                    lives = 3; // Reiniciar a 3 vidas
-                    gameSpeed = initialGameSpeed;
+                    lives = 3;
+                    gameSpeed = 170;
                     primaryFood = {};
                     secondaryFood = null;
                     collisionBlock = null;
@@ -505,12 +513,9 @@
                     }
 
                     if (currentScoreDisplay) currentScoreDisplay.textContent = `Puntuación: ${score}`;
-                    if (livesDisplay) livesDisplay.textContent = 'Vidas: ' + '❤️'.repeat(Math.min(lives, 3)); // Limitar a 3 vidas
+                    if (livesDisplay) livesDisplay.textContent = 'Vidas: ' + '❤️'.repeat(Math.min(lives, 3));
                     isPaused = true;
                     if (playPauseButton) playPauseButton.innerHTML = '&#9654;';
-                    localStorage.removeItem('snakeHighScore'); // Borrar puntuación alta
-                    if (highScoreDisplay) highScoreDisplay.textContent = `Puntuación Alta: 0`;
-                    highScore = 0;
                     placeFood();
                     draw();
                 } catch (e) {
@@ -549,7 +554,7 @@
                 try {
                     primaryFood = findValidPosition();
                     secondaryFood = null;
-                    heart = null; // Desactivar corazones para limitar vidas
+                    heart = null;
                     powerUp = null;
 
                     const spiderProb = 0.15;
@@ -833,6 +838,11 @@
                         }
 
                         if (currentScoreDisplay) currentScoreDisplay.textContent = `Puntuación: ${score}`;
+                        if (score > highScore) {
+                            highScore = score;
+                            localStorage.setItem('snakeHighScore', highScore);
+                            if (highScoreDisplay) highScoreDisplay.textContent = `Puntuación Alta: ${highScore}`;
+                        }
 
                         if (score > 0 && score % 3 === 0) {
                             if (gameSpeed > minSpeed) {
@@ -844,7 +854,6 @@
 
                         placeFood();
                     } else if (heart && head.x === heart.x && head.y === heart.y) {
-                        // No aumentar vidas por encima de 3
                         if (lives < 3) {
                             lives++;
                             if (livesDisplay) livesDisplay.textContent = 'Vidas: ' + '❤️'.repeat(lives);
@@ -911,7 +920,7 @@
             const gameOver = () => {
                 try {
                     playBassEffect('C1', '2n');
-                    showMessage(`¡Fin del juego! Puntuación: ${score}.`);
+                    showMessage(`¡Fin del juego! Puntuación: ${score}.`, true);
                 } catch (e) {
                     console.error("Error al manejar fin del juego:", e.message);
                 }
